@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --expose-gc src/queue/worker.ts & bun run index.ts"
+    "dev": "bun src/start-server.ts",
+    "start": "bun src/start-server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -6,22 +6,20 @@ import { isAllowedType, isAllowedFormat, generateSafePath } from "../utils/image
 
 export const convertRoute = new Hono();
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-
 // ASYNC MODE ONLY - returns jobId
-convertRoute.post("/convert", async (c) => {
+convertRoute.post("/convert", async (c: any) => {
   const body = await c.req.parseBody();
   const file = body["file"] as File;
   const format = body["format"] as string;
 
   const ip =
-    c.req.header("x-forwaded-for") ||
+    c.req.header("x-forwarded-for") ||
     c.req.header("x-real-ip") ||
     "unknown";
 
-  // if (rateLimit(ip)) {
-  //   return c.json({ error: "Too many requests" }, 429);
-  // }
+  if (rateLimit(ip)) {
+    return c.json({ error: "Too many requests" }, 429);
+  }
 
   if (!file || !format) {
     return c.json({ error: "Missing file or format" }, 400);
@@ -31,7 +29,6 @@ convertRoute.post("/convert", async (c) => {
     return c.json({ error: "Unsupported file type" }, 400);
   }
 
-  // Validate file size (max 10MB for async)
   if (file.size > 10 * 1024 * 1024) {
     return c.json({ error: "File too large (max 10MB) for async queue" }, 400);
   }
@@ -44,25 +41,49 @@ convertRoute.post("/convert", async (c) => {
   const inputPath = generateSafePath("upload", format);
   await Bun.write(inputPath, file);
 
+  const reqId = c.get("requestId") as any || "unknown";
+
   logger.info({
-    requestId: c.get("requestId"),
+    requestId: reqId,
     msg: "File saved (async)",
     inputPath,
     size: file.size,
   });
 
-  // Queue job
+  // Backpressure: Reject if queue too long
+  const counts = await imageQueue.getJobCounts();
+  const totalPending = counts.waiting + counts.active;
+
+  if (totalPending > 5000) {
+    logger.warn({
+      requestId: reqId,
+      msg: "Queue too long, rejecting request",
+      queueLength: totalPending,
+    });
+    return c.json({ error: "Server busy, try again later" }, 503);
+  }
+
+  // Queue job with retention policy
   const job = await imageQueue.add("convert", {
     filePath: inputPath,
     format,
-    requestId: c.get("requestId"),
+    requestId: reqId,
+  }, {
+    removeOnComplete: 100,
+    removeOnFail: 500,
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 1000,
+    },
   });
 
   logger.info({
-    requestId: c.get("requestId"),
+    requestId: reqId,
     msg: "Job queued",
     jobId: job.id,
     format,
+    queueLength: totalPending,
   });
 
   return c.json({

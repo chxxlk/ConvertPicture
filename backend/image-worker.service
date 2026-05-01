@@ -1,0 +1,16 @@
+[Unit]
+Description=Image Conversion Worker
+After=redis.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/home/chvr/Projects/ConvertPicture/backend
+ExecStart=/usr/local/bin/bun --expose-gc src/queue/worker.ts
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+EnvironmentFile=-/home/chvr/Projects/ConvertPicture/backend/.env
+
+[Install]
+WantedBy=multi-user.target

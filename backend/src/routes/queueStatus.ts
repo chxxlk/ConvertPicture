@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Queue, Job } from "bullmq";
+import { Queue } from "bullmq";
 import { connection } from "../queue/connection";
 
 const queue = new Queue("image-conversion", { connection });

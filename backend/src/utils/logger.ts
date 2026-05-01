@@ -1,4 +1,4 @@
-import pino from "pino"
+import pino from "pino";
 
 export const logger = pino({
   level: "info",
@@ -8,4 +8,4 @@ export const logger = pino({
       colorize: true,
     },
   },
-})
+});

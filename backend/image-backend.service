@@ -1,0 +1,16 @@
+[Unit]
+Description=Image Conversion API Backend
+After=redis.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/home/chvr/Projects/ConvertPicture/backend
+ExecStart=/usr/local/bin/bun run index.ts
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+EnvironmentFile=-/home/chvr/Projects/ConvertPicture/backend/.env
+
+[Install]
+WantedBy=multi-user.target

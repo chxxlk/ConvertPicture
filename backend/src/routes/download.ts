@@ -13,19 +13,33 @@ downloadRoute.get("/download/:jobId", async (c) => {
     return c.json({ error: "Invalid job ID" }, 400);
   }
 
-  // Try common formats
+  // Try persistent storage first, then fallback to /tmp
   const formats = ["png", "jpeg", "jpg", "webp"];
   let filePath: string | null = null;
 
+  // Check /var/storage/converted first
   for (const fmt of formats) {
-    // Worker saves as converted-{jobId}.{format}
-    const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
+    const tryPath = `/var/storage/converted/${jobId}.${fmt}`;
     try {
       await fs.access(tryPath);
       filePath = tryPath;
       break;
     } catch {
       continue;
+    }
+  }
+
+  // Fallback to /tmp
+  if (!filePath) {
+    for (const fmt of formats) {
+      const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
+      try {
+        await fs.access(tryPath);
+        filePath = tryPath;
+        break;
+      } catch {
+        continue;
+      }
     }
   }
 

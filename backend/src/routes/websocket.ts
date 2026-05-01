@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/bun";
 import { Queue } from "bullmq";
 import { connection } from "../queue/connection";
 

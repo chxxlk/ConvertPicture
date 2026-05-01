@@ -19,9 +19,9 @@ convertSyncRoute.post("/convert-sync", async (c) => {
     c.req.header("x-real-ip") ||
     "unknown";
 
-  // if (rateLimit(ip)) {
-  //   return c.json({ error: "Too many requests" }, 429);
-  // }
+  if (rateLimit(ip)) {
+    return c.json({ error: "Too many requests" }, 429);
+  }
 
   if (!file || !format) {
     return c.json({ error: "Missing file or format" }, 400);
@@ -35,11 +35,6 @@ convertSyncRoute.post("/convert-sync", async (c) => {
     return c.json({ error: "File too large for sync (max 1MB). Use /api/convert instead." }, 400);
   }
 
-  // Validate for sync too (max 5MB as safety)
-  if (file.size > 5 * 1024 * 1024) {
-    return c.json({ error: "File too large even for async (max 5MB)" }, 400);
-  }
-
   if (!isAllowedFormat(format)) {
     return c.json({ error: "Invalid format" }, 400);
   }
@@ -48,7 +43,7 @@ convertSyncRoute.post("/convert-sync", async (c) => {
   const buffer = await file.arrayBuffer();
   const inputBuffer = Buffer.from(buffer);
 
-  console.log(`[Sync] Checking: size=${inputBuffer.length}, format=${format}`)
+  console.log(`[Sync] Checking: size=${inputBuffer.length}, format=${format}`);
 
   const isSync = await shouldUseSync(inputBuffer, format);
   if (!isSync) {
@@ -57,23 +52,23 @@ convertSyncRoute.post("/convert-sync", async (c) => {
 
   try {
     const converted = await convertImage(inputBuffer, format);
+    const reqId = c.get("requestId" as any) || "unknown";
 
     logger.info({
-      requestId: c.get("requestId"),
+      requestId: reqId,
       msg: "Image converted (sync)",
       format,
       size: converted.length,
     });
 
-    return new Response(converted, {
-      headers: {
-        "Content-Type": `image/${format}`,
-        "Content-Disposition": `attachment; filename=converted.${format}`,
-      },
-    });
+    c.header("Content-Type", `image/${format}`);
+    c.header("Content-Disposition", `attachment; filename=converted.${format}`);
+
+    return c.body(converted as any);
   } catch (err: any) {
+    const reqId = c.get("requestId" as any) || "unknown";
     logger.error({
-      requestId: c.get("requestId"),
+      requestId: reqId,
       msg: "Sync conversion failed",
       error: err.message,
     });

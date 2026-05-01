@@ -1,0 +1,13 @@
+[Unit]
+Description=Redis with AOF persistence
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+ExecStart=/usr/bin/redis-server --appendonly yes --daemonize no
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

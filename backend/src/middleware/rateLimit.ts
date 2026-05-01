@@ -5,7 +5,7 @@ type Record = {
 const store = new Map<string, Record>()
 
 const WINDOW_MS = 60 * 1000 //1 menit
-const MAX_REQUEST = 10
+const MAX_REQUEST = 100
 
 export const rateLimit = (ip: string) : boolean => {
   const now = Date.now()
