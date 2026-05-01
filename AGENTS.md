@@ -11,8 +11,11 @@ Bun monorepo with two packages:
 Backend:
 ```bash
 cd backend && bun install
-bun run index.ts
+bun run dev          # starts Redis + Worker + Backend with auto-restart
+bun run start       # production mode (same as dev)
 ```
+
+Process management uses Bun.spawn instead of PM2 (PM2 incompatible with Bun's ES modules).
 
 Frontend:
 ```bash
