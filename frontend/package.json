@@ -7,10 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
+    "jszip": "^3.10.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

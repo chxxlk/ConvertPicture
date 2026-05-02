@@ -10,7 +10,8 @@ export const convertRoute = new Hono();
 convertRoute.post("/convert", async (c: any) => {
   const body = await c.req.parseBody();
   const file = body["file"] as File;
-  const format = body["format"] as string;
+  // Accept both "format" (legacy) and "targetFormat" (new)
+  const format = (body["targetFormat"] as string) || (body["format"] as string);
 
   const ip =
     c.req.header("x-forwarded-for") ||
@@ -66,7 +67,7 @@ convertRoute.post("/convert", async (c: any) => {
   // Queue job with retention policy
   const job = await imageQueue.add("convert", {
     filePath: inputPath,
-    format,
+    targetFormat: format, // Worker expects targetFormat
     requestId: reqId,
   }, {
     removeOnComplete: 100,

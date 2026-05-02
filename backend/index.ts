@@ -14,6 +14,7 @@ const app = new Hono()
 // CORS must be first middleware
 app.use("*", cors({
   origin: ["http://localhost:5173"],
+  credentials: true,
   allowMethods: ["POST", "GET", "OPTIONS"],
   allowHeaders: ["Content-Type"],
   exposeHeaders: ["Content-Length"],

@@ -7,20 +7,21 @@ import path from "path";
 
 interface JobData {
   filePath: string;
-  format: string;
+  targetFormat?: string; // New format
+  format?: string; // Legacy format
   requestId?: string;
 }
 
 // Get output path (persistent with fallback)
-const getOutputPath = (jobId: string, format: string): string => {
+const getOutputPath = (jobId: string, targetFormat: string): string => {
   try {
     const dir = "/var/storage/converted";
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    return path.join(dir, `${jobId}.${format}`);
+    return path.join(dir, `${jobId}.${targetFormat}`);
   } catch {
-    return path.join("/tmp", `converted-${jobId}.${format}`);
+    return path.join("/tmp", `converted-${jobId}.${targetFormat}`);
   }
 };
 
@@ -28,18 +29,20 @@ const getOutputPath = (jobId: string, format: string): string => {
 const worker = new Worker(
   "image-conversion",
   async (job: Job<JobData>) => {
-    const { filePath: inputPath, format, requestId } = job.data;
-    const outputPath = getOutputPath(String(job.id), format);
+    // Accept both targetFormat (new) and format (legacy)
+    const targetFormat = job.data.targetFormat || job.data.format || 'png';
+    const { filePath: inputPath, requestId } = job.data;
+    const outputPath = getOutputPath(String(job.id), targetFormat);
 
     try {
-      console.log(`[Job ${job.id}] Starting (streaming): ${path.basename(inputPath)} → ${format}`);
+      console.log(`[Job ${job.id}] Starting (streaming): ${path.basename(inputPath)} → ${targetFormat}`);
 
       await new Promise<void>((resolve, reject) => {
         const readStream = fs.createReadStream(inputPath);
         const writeStream = fs.createWriteStream(outputPath);
 
         const sharpInstance = sharp();
-        sharpInstance.toFormat(format as keyof sharp.FormatEnum);
+        sharpInstance.toFormat(targetFormat as keyof sharp.FormatEnum);
 
         readStream
           .pipe(sharpInstance)

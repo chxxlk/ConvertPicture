@@ -12,35 +12,57 @@ downloadRoute.get("/download/:jobId", async (c) => {
     return c.json({ error: "Invalid job ID" }, 400);
   }
 
-  const formats = ["png", "jpeg", "jpg", "webp"];
+  const formats = ["png", "jpeg", "jpg", "webp", "avif"];
   let filePath: string | null = null;
   console.log(`[Download] Looking for job ${jobId}`);
 
-  // Check /tmp first
+  // Check /var/storage/converted first (worker saves as {jobId}.{fmt})
   for (const fmt of formats) {
-    const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
-    console.log(`[Download] Checking: ${tryPath}`);
+    const tryPath = `/var/storage/converted/${jobId}.${fmt}`;
     try {
       await fs.access(tryPath);
       filePath = tryPath;
       console.log(`[Download] Found: ${tryPath}`);
       break;
-    } catch {
-      continue;
-    }
+    } catch { continue; }
   }
 
-  // Fallback to /var/storage/converted
+  // Fallback to /tmp with new naming ({jobId}.{fmt})
   if (!filePath) {
     for (const fmt of formats) {
-      const tryPath = `/var/storage/converted/${jobId}.${fmt}`;
+      const tryPath = `/tmp/${jobId}.${fmt}`;
       try {
         await fs.access(tryPath);
         filePath = tryPath;
+        console.log(`[Download] Found in /tmp: ${tryPath}`);
         break;
-      } catch {
-        continue;
-      }
+      } catch { continue; }
+    }
+  }
+
+  // Fallback to old naming in /tmp (converted-{jobId}.{fmt})
+  if (!filePath) {
+    for (const fmt of formats) {
+      const tryPath = `/tmp/converted-${jobId}.${fmt}`;
+      try {
+        await fs.access(tryPath);
+        filePath = tryPath;
+        console.log(`[Download] Found old format in /tmp: ${tryPath}`);
+        break;
+      } catch { continue; }
+    }
+  }
+
+  // Fallback to /tmp with new naming
+  if (!filePath) {
+    for (const fmt of formats) {
+      const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
+      try {
+        await fs.access(tryPath);
+        filePath = tryPath;
+        console.log(`[Download] Found in /tmp: ${tryPath}`);
+        break;
+      } catch { continue; }
     }
   }
 
