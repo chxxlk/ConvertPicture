@@ -28,8 +28,10 @@ function readStream(stream: any, prefix: string) {
 
 async function checkRedis(): Promise<boolean> {
   try {
-    const proc = spawn(["redis-cli", "PING"], { 
-      stdout: "pipe", 
+    const redisHost = process.env.REDIS_HOST || "127.0.0.1";
+    const redisPort = process.env.REDIS_PORT || "6379";
+    const proc = spawn(["redis-cli", "-h", redisHost, "-p", redisPort, "PING"], {
+      stdout: "pipe",
       stderr: "pipe",
       env: { ...process.env, PATH: "/usr/bin:/usr/local/bin:" + (process.env.PATH || "") }
     });

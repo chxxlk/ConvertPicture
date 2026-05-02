@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { cors } from "hono/cors"
 import { convertRoute } from "./src/routes/convert"
 import { convertSyncRoute } from "./src/routes/convertSync"
 import { requestLogger } from "./src/middleware/logger"
@@ -9,6 +10,15 @@ import { downloadRoute } from "./src/routes/download"
 import { pollRoute } from "./src/routes/poll"
 
 const app = new Hono()
+
+// CORS must be first middleware
+app.use("*", cors({
+  origin: ["http://localhost:5173"],
+  allowMethods: ["POST", "GET", "OPTIONS"],
+  allowHeaders: ["Content-Type"],
+  exposeHeaders: ["Content-Length"],
+  maxAge: 86400,
+}))
 
 app.route("/api", convertRoute)        // POST /api/convert (async)
 app.route("/api", convertSyncRoute)     // POST /api/convert-sync (sync)

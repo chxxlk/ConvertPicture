@@ -8,31 +8,32 @@ export const downloadRoute = new Hono();
 downloadRoute.get("/download/:jobId", async (c) => {
   const jobId = c.req.param("jobId");
 
-  // Security: only allow valid jobId format (numeric)
   if (!/^\d+$/.test(jobId)) {
     return c.json({ error: "Invalid job ID" }, 400);
   }
 
-  // Try persistent storage first, then fallback to /tmp
   const formats = ["png", "jpeg", "jpg", "webp"];
   let filePath: string | null = null;
+  console.log(`[Download] Looking for job ${jobId}`);
 
-  // Check /var/storage/converted first
+  // Check /tmp first
   for (const fmt of formats) {
-    const tryPath = `/var/storage/converted/${jobId}.${fmt}`;
+    const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
+    console.log(`[Download] Checking: ${tryPath}`);
     try {
       await fs.access(tryPath);
       filePath = tryPath;
+      console.log(`[Download] Found: ${tryPath}`);
       break;
     } catch {
       continue;
     }
   }
 
-  // Fallback to /tmp
+  // Fallback to /var/storage/converted
   if (!filePath) {
     for (const fmt of formats) {
-      const tryPath = path.join("/tmp", `converted-${jobId}.${fmt}`);
+      const tryPath = `/var/storage/converted/${jobId}.${fmt}`;
       try {
         await fs.access(tryPath);
         filePath = tryPath;
@@ -44,29 +45,25 @@ downloadRoute.get("/download/:jobId", async (c) => {
   }
 
   if (!filePath) {
+    console.error(`[Download] File not found for job ${jobId}`);
     return c.json({ error: "File not found or expired" }, 404);
   }
 
-  try {
-    const buffer = await fs.readFile(filePath);
-    const ext = path.extname(filePath).slice(1);
+  const buffer = await fs.readFile(filePath);
+  const ext = path.extname(filePath).slice(1);
+  console.log(`[Download] Serving ${filePath} (${buffer.length} bytes)`);
 
-    // Delete after serving (one-time download)
-    setTimeout(async () => {
-      await fs.unlink(filePath!).catch(() => {});
-      console.log(`[Download] Auto-deleted ${filePath}`);
-    }, 3000); // 3s delay
+  // Delete after serving
+  setTimeout(async () => {
+    await fs.unlink(filePath!).catch(() => {});
+    console.log(`[Download] Auto-deleted ${filePath}`);
+  }, 3000);
 
-    c.header("Content-Type", `image/${ext}`);
-    c.header("Content-Disposition", `attachment; filename=converted.${ext}`);
-
-    return c.body(buffer, {
-      headers: {
-        "Content-Type": `image/${ext}`,
-        "Content-Disposition": `attachment; filename=converted.${ext}`,
-      },
-    });
-  } catch {
-    return c.json({ error: "Failed to read file" }, 500);
-  }
+  return new Response(buffer, {
+    status: 200,
+    headers: {
+      "Content-Type": `image/${ext}`,
+      "Content-Disposition": `attachment; filename=converted.${ext}`,
+    },
+  });
 });

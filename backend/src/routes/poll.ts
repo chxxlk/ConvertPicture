@@ -1,8 +1,6 @@
 import { Hono } from "hono";
 import { Queue, Job } from "bullmq";
 import { connection } from "../queue/connection";
-import fs from "fs/promises";
-import path from "path";
 
 const queue = new Queue("image-conversion", { connection });
 
@@ -19,35 +17,25 @@ pollRoute.get("/poll/:jobId", async (c) => {
   const state = await job.getState();
 
   if (state === "completed") {
-    const { outputPath } = job.returnvalue || {};
-    if (outputPath && await fs.access(outputPath).then(() => true).catch(() => false)) {
-      const buffer = await fs.readFile(outputPath);
-      const ext = path.extname(outputPath).slice(1);
-
-      // Auto-delete after serving
-      setTimeout(() => fs.unlink(outputPath).catch(() => {}), 5000);
-
-      return new Response(buffer, {
-        headers: {
-          "Content-Type": `image/${ext}`,
-          "Content-Disposition": `attachment; filename=converted.${ext}`,
-          "X-Job-Status": "completed",
-        },
-      });
-    }
-    return c.json({ state: "completed", error: "Result file not found" });
+    // Return JSON only, not binary
+    const baseUrl = `${c.req.url.origin}`;
+    return c.json({
+      status: "completed",
+      jobId,
+      downloadUrl: `${baseUrl}/api/download/${jobId}`,
+    });
   }
 
   if (state === "failed") {
     return c.json({
-      state: "failed",
+      status: "failed",
       error: job.failedReason,
     }, 500);
   }
 
-  // Still processing
+  // Still processing (waiting, active, delayed)
   return c.json({
-    state, // waiting, active, delayed
+    status: state,
     progress: job.progress,
     jobId,
   });
